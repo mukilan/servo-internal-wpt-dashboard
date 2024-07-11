@@ -51,9 +51,8 @@ async function process_chunks (path) {
         const scored_chunk = process_raw_results(chunk_run)
         if (!result.run_info) {
             const raw_run_info = scored_chunk.run_info
-            const matches = raw_run_info
-                .browser_version.match(/^Servo ([0-9.]+-[a-f0-9]+)?(-dirty)?$/)
-            const browser_version = matches.length === 3 ? matches[1] : 'Unknown'
+            const matches = raw_run_info?.browser_version?.match(/^Servo ([0-9.]+-[a-f0-9]+)?(-dirty)?$/)
+            const browser_version = matches?.length === 3 ? matches[1] : 'Unknown'
             result.run_info = Object.assign(raw_run_info, { browser_version })
         }
         delete scored_chunk.run_info
@@ -65,6 +64,23 @@ async function process_chunks (path) {
 async function add_run (runs_dir, chunks_dir, date) {
     const new_run = await process_chunks(chunks_dir)
     await write_compressed(`./${runs_dir}/${date}.xz`, new_run)
+}
+
+async function score_single_run (chunks_dir) {
+    const run = await process_chunks(chunks_dir)
+    const test_to_areas = focus_areas_map(run)
+    const { area_keys } = get_focus_areas()
+    const score = score_run(run, run, test_to_areas)
+    const row = [
+        ['revision', run.run_info.revision.substring(0, 9)],
+        ['browser version', run.run_info.browser_version]
+    ]
+
+    for (const area of area_keys) {
+        row.push([area, score[area]])
+    }
+
+    return row
 }
 
 async function recalc_scores (runs_dir) {
@@ -102,8 +118,15 @@ async function recalc_scores (runs_dir) {
 
 async function main () {
     const mode = process.argv[2]
-    if (!['--add', '--recalc'].includes(mode)) {
+    if (!['--add', '--recalc', '--score'].includes(mode)) {
         throw new Error(`invalid mode specified: ${mode}`)
+    }
+
+    if (mode === '--score') {
+        const input_dir = process.argv[3]
+        const result = await score_single_run(input_dir)
+        console.log(result)
+        return
     }
 
     if (mode === '--add') {
