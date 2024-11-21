@@ -184,7 +184,9 @@ export function score_run (run, against_run, focus_areas_map) {
     for (const area of Object.keys(FOCUS_AREAS)) {
         scores[area] = {
             total_tests: 0,
-            total_score: 0
+            score_tests: 0,
+            total_subtests: 0,
+            score_subtests: 0,
         }
     }
 
@@ -203,29 +205,34 @@ export function score_run (run, against_run, focus_areas_map) {
         const subtest_names = Object.keys(subtests)
         if (!subtest_names.length) {
             for (const area of areas) {
-                scores[area].total_score += run_test.score
+                scores[area].score_tests += run_test.score
+                scores[area].total_subtests += 1
+                scores[area].score_subtests += run_test.score
             }
         } else {
-            let test_score = 0
+            let score = 0
             for (const subtest of subtest_names) {
                 if (Object.hasOwn(run_test.subtests, subtest)) {
-                    test_score += run_test.subtests[subtest].score
+                    score += run_test.subtests[subtest].score
                 }
             }
-            test_score /= subtest_names.length
             for (const area of areas) {
-                scores[area].total_score += test_score
+                scores[area].score_tests += score / subtest_names.length
+                scores[area].total_subtests += subtest_names.length
+                scores[area].score_subtests += score
             }
         }
     }
 
-    return Object.entries(scores).reduce((scores, [area, totals]) => {
-        scores[area] = 0
+    for (const [area, totals] of Object.entries(scores)) {
         if (totals.total_tests !== 0) {
-            scores[area] = Math.floor(
-                1000 * totals.total_score / totals.total_tests
+            scores[area].per_mille = Math.floor(
+                1000 * totals.score_tests / totals.total_tests
             )
+        } else {
+            scores[area].per_mille = 0
         }
-        return scores
-    }, {})
+    }
+
+    return scores
 }

@@ -166,11 +166,23 @@ describe('Scoring', () => {
             test2: ['all']
         }
         let score = score_run(run, run, focus_area_map)
-        assert.deepEqual(score.all, 1000)
+        assert.deepEqual(score.all, {
+            per_mille: 1000,
+            score_subtests: 2,
+            score_tests: 2,
+            total_subtests: 2,
+            total_tests: 2,
+        })
 
         run.test_scores.test2.score = 0
         score = score_run(run, run, focus_area_map)
-        assert.deepEqual(score.all, 500)
+        assert.deepEqual(score.all, {
+            per_mille: 500,
+            score_subtests: 1,
+            score_tests: 1,
+            total_subtests: 2,
+            total_tests: 2,
+        })
     })
     it('calculates scores for subtests', () => {
         const run = {
@@ -187,7 +199,13 @@ describe('Scoring', () => {
         }
 
         const score = score_run(run, run, { test1: ['all'] })
-        assert.equal(score.all, 1000)
+        assert.deepEqual(score.all, {
+            per_mille: 1000,
+            score_subtests: 3,
+            score_tests: 1,
+            total_subtests: 3,
+            total_tests: 1,
+        })
     })
     it('calculates scores for subtests by averaging', () => {
         const run = {
@@ -204,7 +222,13 @@ describe('Scoring', () => {
         }
 
         const score = score_run(run, run, { test1: ['all'] })
-        assert.equal(score.all, 333)
+        assert.deepEqual(score.all, {
+            per_mille: 333,
+            score_subtests: 1,
+            score_tests: 0.3333333333333333,
+            total_subtests: 3,
+            total_tests: 1,
+        })
     })
     it('calculates scores correctly even subtest name collides with JS builtins', () => {
         const run = {
@@ -237,7 +261,13 @@ describe('Scoring', () => {
         }
 
         const score = score_run(run, against_run, { test1: ['all'], test2: ['all'] })
-        assert.equal(score.all, 500)
+        assert.deepEqual(score.all, {
+            per_mille: 500,
+            score_subtests: 1,
+            score_tests: 1,
+            total_subtests: 2,
+            total_tests: 2,
+        })
     })
     it('calculates scores based only on tests in new runs', () => {
         const old_run = {
@@ -258,11 +288,23 @@ describe('Scoring', () => {
             test1: all, test2: all, test3: all
         }
         let score = score_run(old_run, new_run, focus_map)
-        assert.equal(score.all, 0)
+        assert.deepEqual(score.all, {
+            per_mille: 0,
+            score_subtests: 0,
+            score_tests: 0,
+            total_subtests: 1,
+            total_tests: 2,
+        })
 
         old_run.test_scores.test3.score = 1
         score = score_run(old_run, new_run, focus_map)
-        assert.equal(score.all, 500)
+        assert.deepEqual(score.all, {
+            per_mille: 500,
+            score_subtests: 1,
+            score_tests: 1,
+            total_subtests: 1,
+            total_tests: 2,
+        })
     })
 })
 

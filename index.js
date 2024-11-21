@@ -67,10 +67,10 @@ async function add_run (runs_dir, chunks_dir, date) {
     await write_compressed(`./${runs_dir}/${date}.xz`, new_run)
 }
 
-async function recalc_scores (runs_dir) {
-    console.log(`Calculating scores for ${runs_dir} directory...`)
+async function recalc_detailed_scores (runs_dir) {
+    console.log(`Calculating detailed scores for ${runs_dir} directory...`)
 
-    const scores = []
+    const result = []
     console.log('Enumerating runs')
     const all_runs = await all_runs_sorted(runs_dir)
     const run_count = all_runs.length
@@ -85,19 +85,34 @@ async function recalc_scores (runs_dir) {
         const run = await read_compressed(`./${runs_dir}/${r}`)
         console.log(`Calculating score for run ${runs_dir}/${r} (${i}/${run_count})`)
         const score = score_run(run, new_run, test_to_areas)
-        const row = [
+        result.push({
             date,
-            run.run_info.revision.substring(0, 9),
-            run.run_info.browser_version
-        ]
-
-        for (const area of area_keys) {
-            row.push(score[area])
-        }
-        scores.push(row)
+            revision: run.run_info.revision.substring(0, 9),
+            browser_version: run.run_info.browser_version,
+            area_scores: area_keys.map(area => score[area]),
+        })
     }
 
-    return scores
+    return result
+}
+
+function generate_rows (detailed_scores) {
+    const result = []
+
+    const { area_keys } = get_focus_areas()
+    for (const score of detailed_scores) {
+        const row = [
+            score.date,
+            score.revision,
+            score.browser_version,
+        ]
+        for (const area_score of score.area_scores) {
+            row.push(area_score.per_mille)
+        }
+        result.push(row)
+    }
+
+    return result
 }
 
 async function main () {
@@ -114,10 +129,16 @@ async function main () {
         await add_run('runs-2020', chunks_2020, date)
     }
 
-    const scores_2013 = await recalc_scores('runs')
-    const scores_2020 = await recalc_scores('runs-2020')
-    const scores_by_date = new Map(scores_2020.map(score => [score[0], score]))
+    const detailed_scores_2013 = await recalc_detailed_scores('runs')
+    const detailed_scores_2020 = await recalc_detailed_scores('runs-2020')
+    const detailed_scores = {
+        layout_2013: detailed_scores_2013,
+        layout_2020: detailed_scores_2020,
+    }
 
+    const scores_2013 = generate_rows(detailed_scores_2013)
+    const scores_2020 = generate_rows(detailed_scores_2020)
+    const scores_by_date = new Map(scores_2020.map(score => [score[0], score]))
     const scores = []
     for (const score_2013 of scores_2013) {
         const len = scores.push(score_2013)
@@ -131,7 +152,12 @@ async function main () {
 
     console.log('Writing site/scores.json')
     write_json_file(
-        './site/scores.json', { area_keys, focus_areas, scores })
+        './site/scores.json', {
+            area_keys,
+            focus_areas,
+            scores,
+            detailed_scores,
+        })
 
     console.log('Done')
 }

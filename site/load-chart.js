@@ -1,7 +1,9 @@
 /* global google */
+/* global all_scores */
 
 google.charts.load('current', { packages: ['corechart', 'line'] })
 google.charts.setOnLoadCallback(setupChart)
+all_scores = null
 
 const fetchData = fetch('scores.json')
 const embed = location.search === '?embed'
@@ -107,7 +109,6 @@ function setupChart () {
     const period_dropdown = document.getElementById('selected-period')
     const show_legacy = document.getElementById('show-legacy')
     const chart = new google.visualization.LineChart(node)
-    let all_scores
 
     Object.keys(periodRanges).forEach(date => {
         const selector = document.createElement('option')
