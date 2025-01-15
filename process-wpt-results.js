@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import chalk from 'chalk';
 
 function is_object (val) {
     return (
@@ -189,7 +190,7 @@ export function get_focus_areas () {
     return { area_keys, area_names }
 }
 
-export function score_run (run, against_run, focus_areas_map) {
+export function score_run (run, against_run, focus_areas_map, print_filter) {
     const scores = {}
     for (const area of Object.keys(FOCUS_AREAS)) {
         scores[area] = {
@@ -198,7 +199,10 @@ export function score_run (run, against_run, focus_areas_map) {
         }
     }
 
-    for (const [test, { subtests }] of Object.entries(against_run.test_scores)) {
+    let testNames = Object.keys(against_run.test_scores);
+    testNames.sort();
+    for (const test of testNames) {
+        const { subtests } = against_run.test_scores[test];
         const areas = focus_areas_map[test]
 
         for (const area of areas) {
@@ -215,16 +219,32 @@ export function score_run (run, against_run, focus_areas_map) {
             for (const area of areas) {
                 scores[area].total_score += run_test.score
             }
-        } else {
-            let test_score = 0
-            for (const subtest of subtest_names) {
-                if (Object.hasOwn(run_test.subtests, subtest)) {
-                    test_score += run_test.subtests[subtest].score
+            if (print_filter(test)) {
+                const passes = run_test.score == 1;
+                if (passes) {
+                    console.log(chalk.green(`PASS ${test}`))
+                } else {
+                    console.log(chalk.red(`FAIL ${test}`))
                 }
             }
-            test_score /= subtest_names.length
+        } else {
+            let passed_test_count = 0
+            for (const subtest of subtest_names) {
+                if (Object.hasOwn(run_test.subtests, subtest)) {
+                    passed_test_count += run_test.subtests[subtest].score
+                }
+            }
+            const test_score = passed_test_count / subtest_names.length
             for (const area of areas) {
                 scores[area].total_score += test_score
+            }
+            if (print_filter(test)) {
+                const passes = test_score == 1;
+                if (passes) {
+                    console.log(chalk.green(`PASS ${test} (${passed_test_count}/${subtest_names.length})`))
+                } else {
+                    console.log(chalk.red(`FAIL ${test} (${passed_test_count}/${subtest_names.length})`))
+                }
             }
         }
     }
